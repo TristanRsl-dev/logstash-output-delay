@@ -9,14 +9,27 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
   concurrency :single
   
   config :delay, :validate => :number, :default => 5, :required => false
+  config :out, :validate => :string, :default => "stdout", :required => false
   
   @events
   @outputPlugin
 
+  private
+  def chooseOutputPlugin
+	if @out == "stdout"
+		@outputPlugin = LogStash::Outputs::Stdout.new
+	elsif @out == "elasticsearch"
+		puts "Not implemented yet"
+	else
+		puts "Choose between stdout or elasticsearch"
+	end
+  end
+  
   public
   def register
 	@events = []
-	@outputPlugin = LogStash::Outputs::Stdout.new
+	@outputPlugin = nil
+	chooseOutputPlugin()
 
 	Thread.new {
 		loop do
