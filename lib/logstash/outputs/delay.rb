@@ -25,6 +25,14 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 	end
   end
   
+  private
+  def redirectMessageToPlugin(message)
+	if @out == "stdout"
+		@outputPlugin.multi_receive_encoded([[message, message]])
+		puts ""
+	end
+  end
+  
   public
   def register
 	@events = []
@@ -36,8 +44,7 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 			if @events.length != 0
 				event = @events.at(0)
 				if event.time < Time.new
-					@outputPlugin.multi_receive_encoded([[event.message, event.message]])
-					puts ""
+					redirectMessageToPlugin(event.message)
 					@events.shift
 				end
 			end
