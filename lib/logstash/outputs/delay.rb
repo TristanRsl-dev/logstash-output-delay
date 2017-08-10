@@ -17,6 +17,19 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
   def register
 	@events = []
 	@outputPlugin = LogStash::Outputs::Stdout.new
+
+	Thread.new {
+		loop do
+			if @events.length != 0
+				event = @events.at(0)
+				if event.time < Time.new
+					@outputPlugin.multi_receive_encoded([[event.message, event.message]])
+					puts ""
+					@events.shift
+				end
+			end
+		end
+	}
   end # def register
 
   public
@@ -24,19 +37,9 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 	event = OpenStruct.new
 	event.message = message
 	event.time = Time.new + @delay
-	
+
 	@events << event
-	
-	puts "[INFO][Delay] Event time: " + @events.at(-1).time.inspect
-	puts "[INFO][Delay] Events tab size: " + @events.length.to_s
-	
-	Thread.new {
-		sleep @delay
-		puts "[INFO][Delay] The thread is over"
-		@outputPlugin.multi_receive_encoded([[event.message, event.message]])
-		puts ""
-	}
-	
+
     return "Event received"
   end # def event
 end # class LogStash::Outputs::Delay
