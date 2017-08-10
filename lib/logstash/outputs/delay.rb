@@ -11,19 +11,25 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
   
   config :delay, :validate => :number, :default => 5, :required => false
   config :out, :validate => :string, :default => "stdout", :required => false
+  config :hosts, :validate => :uri, :default => "//127.0.0.1", :required => false
+  config :index, :validate => :string, :default => "logstash", :required => false
+  config :document_id, :validate => :string, :required => false
+  config :action, :validate => :string, :default => "index", :required => false
+  config :doc_as_upsert, :validate => :boolean, :default => false, :required => false
   
   @events
   @outputPlugin
 
   private
-  def chooseOutputPlugin
-	if @out == "stdout"
-		@outputPlugin = LogStash::Outputs::Stdout.new
-	elsif @out == "elasticsearch"
-		@outputPlugin = LogStash::Outputs::ElasticSearch.new
-	else
-		puts "Choose between stdout or elasticsearch"
-	end
+  def createElasticsearchConfig
+	config = {
+		"hosts" => @hosts,
+		"index" => @index,
+		"action" => @action,
+		"document_id" => @document_id,
+		"doc_as_upsert" => @doc_as_upsert
+	}
+	return config
   end
   
   private
@@ -36,6 +42,19 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 	else
 		puts = "Choose between stdout or elasticsearch"
 	end
+	return nil
+  end
+
+  private
+  def chooseOutputPlugin
+	if @out == "stdout"
+		@outputPlugin = LogStash::Outputs::Stdout.new
+	elsif @out == "elasticsearch"
+		@outputPlugin = LogStash::Outputs::ElasticSearch.new(createElasticsearchConfig())
+	else
+		puts "Choose between stdout or elasticsearch"
+	end
+	return nil
   end
   
   public
