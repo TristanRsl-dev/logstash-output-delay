@@ -1,6 +1,7 @@
 # encoding: utf-8
 require "logstash/outputs/base"
 require "logstash/namespace"
+require "logstash/outputs/stdout"
 
 # An delay output that does nothing.
 class LogStash::Outputs::Delay < LogStash::Outputs::Base
@@ -10,10 +11,12 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
   config :delay, :validate => :number, :default => 5, :required => false
   
   @events
+  @outputPlugin
 
   public
   def register
 	@events = []
+	@outputPlugin = LogStash::Outputs::Stdout.new
   end # def register
 
   public
@@ -26,6 +29,14 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 	
 	puts "[INFO][Delay] Event time: " + @events.at(-1).time.inspect
 	puts "[INFO][Delay] Events tab size: " + @events.length.to_s
+	
+	Thread.new {
+		sleep @delay
+		puts "[INFO][Delay] The thread is over"
+		@outputPlugin.multi_receive_encoded([[event.message, event.message]])
+		puts ""
+	}
+	
     return "Event received"
   end # def event
 end # class LogStash::Outputs::Delay
