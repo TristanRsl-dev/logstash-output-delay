@@ -2,6 +2,7 @@
 require "logstash/outputs/base"
 require "logstash/namespace"
 require "logstash/outputs/stdout"
+require "logstash/outputs/elasticsearch"
 
 # An delay output that does nothing.
 class LogStash::Outputs::Delay < LogStash::Outputs::Base
@@ -19,7 +20,7 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 	if @out == "stdout"
 		@outputPlugin = LogStash::Outputs::Stdout.new
 	elsif @out == "elasticsearch"
-		puts "Not implemented yet"
+		@outputPlugin = LogStash::Outputs::ElasticSearch.new
 	else
 		puts "Choose between stdout or elasticsearch"
 	end
@@ -30,6 +31,10 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 	if @out == "stdout"
 		@outputPlugin.multi_receive_encoded([[message, message]])
 		puts ""
+	elsif @out == "elasticsearch"
+		@outputPlugin.multi_receive([message])
+	else
+		puts = "Choose between stdout or elasticsearch"
 	end
   end
   
@@ -38,6 +43,8 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 	@events = []
 	@outputPlugin = nil
 	chooseOutputPlugin()
+
+	@outputPlugin.register
 
 	Thread.new {
 		loop do
