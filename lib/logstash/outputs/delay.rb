@@ -18,7 +18,8 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
   config :doc_as_upsert, :validate => :boolean, :default => false, :required => false
   
   @events
-  @outputPlugin
+  @output_plugin
+  @event_buffer
 
   private
   def createElasticsearchConfig
@@ -35,10 +36,14 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
   private
   def redirectMessageToPlugin(message)
 	if @out == "stdout"
-		@outputPlugin.multi_receive_encoded([[message, message]])
+		@output_plugin.multi_receive_encoded([[message, message]])
 		puts ""
 	elsif @out == "elasticsearch"
-		@outputPlugin.multi_receive([message])
+		@event_buffer << message
+		if @event_buffer.length >= 200
+			@output_plugin.multi_receive(@event_buffer)
+			@event_buffer = []
+		end
 	else
 		puts = "Choose between stdout or elasticsearch"
 	end
@@ -48,9 +53,9 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
   private
   def chooseOutputPlugin
 	if @out == "stdout"
-		@outputPlugin = LogStash::Outputs::Stdout.new
+		@output_plugin = LogStash::Outputs::Stdout.new
 	elsif @out == "elasticsearch"
-		@outputPlugin = LogStash::Outputs::ElasticSearch.new(createElasticsearchConfig())
+		@output_plugin = LogStash::Outputs::ElasticSearch.new(createElasticsearchConfig())
 	else
 		puts "Choose between stdout or elasticsearch"
 	end
@@ -60,10 +65,11 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
   public
   def register
 	@events = []
-	@outputPlugin = nil
+	@output_plugin = nil
+	@event_buffer = []
 	chooseOutputPlugin()
 
-	@outputPlugin.register
+	@output_plugin.register
 
 	Thread.new {
 		loop do
