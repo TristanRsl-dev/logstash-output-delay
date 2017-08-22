@@ -3,6 +3,7 @@ require "logstash/outputs/base"
 require "logstash/namespace"
 require "logstash/outputs/stdout"
 require "logstash/outputs/elasticsearch"
+require "rufus-scheduler"
 
 # An delay output that does nothing.
 class LogStash::Outputs::Delay < LogStash::Outputs::Base
@@ -19,7 +20,6 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
   
   @events
   @output_plugin
-  @event_buffer
 
   private
   def createElasticsearchConfig
@@ -34,16 +34,12 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
   end
   
   private
-  def redirectMessageToPlugin(message)
+  def redirectMessageToPlugin(event_buffer)
 	if @out == "stdout"
 		@output_plugin.multi_receive_encoded([[message, message]])
 		puts ""
 	elsif @out == "elasticsearch"
-		@event_buffer << message
-		if @event_buffer.length >= 200
-			@output_plugin.multi_receive(@event_buffer)
-			@event_buffer = []
-		end
+		@output_plugin.multi_receive(event_buffer)
 	else
 		puts = "Choose between stdout or elasticsearch"
 	end
@@ -61,27 +57,32 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 	end
 	return nil
   end
-  
+
   public
   def register
 	@events = []
 	@output_plugin = nil
-	@event_buffer = []
 	chooseOutputPlugin()
 
 	@output_plugin.register
 
-	Thread.new {
-		loop do
-			if @events.length != 0
-				event = @events.at(0)
-				if event.time < Time.new
-					redirectMessageToPlugin(event.message)
-					@events.shift
-				end
+	scheduler = Rufus::Scheduler.new
+
+	scheduler.every '5s' do
+		if @events.length != 0
+			now = Time.new
+			index = 0
+			event_buffer = []
+			while (@events.length > index) && (@events.at(index).time <= now) do
+				event_buffer << @events.at(index).message
+				index += 1
 			end
+			@events.slice!(0, index)
+			Thread.new {
+				redirectMessageToPlugin(event_buffer)
+			}
 		end
-	}
+	end
   end # def register
 
   public
