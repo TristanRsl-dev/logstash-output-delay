@@ -75,28 +75,27 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 
 	scheduler = Rufus::Scheduler.new
 
-	scheduler.every '5s' do
+	scheduler_delay = @delay.to_s << "s"
+	scheduler.every scheduler_delay do
 		if @events.length != 0
 			now = Time.new
 			index = 0
-			event_buffer = []
-			while (@events.length > index) && (@events.at(index).time <= now) do
-				event_buffer << @events.at(index).message
+			@events.detect {|event|
 				index += 1
-			end
-			@events.slice!(0, index)
-			redirectMessageToPlugin(event_buffer)
+				event.time > now
+			}
+			redirectMessageToPlugin(@events.slice!(0, index).map {|e| e.event})
 		end
 	end
   end # def register
 
   public
-  def receive(message)
-	event = OpenStruct.new
-	event.message = message
-	event.time = Time.new + @delay
+  def receive(event)
+	expended = OpenStruct.new
+	expended.event = event
+	expended.time = Time.new + @delay
 
-	@events << event
+	@events << expended
 
     return "Event received"
   end # def event
