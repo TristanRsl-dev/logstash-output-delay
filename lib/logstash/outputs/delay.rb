@@ -32,12 +32,19 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 	}
 	return config
   end
-  
+
+  private
+  def encodeEvent(event)
+	[[event, event]]
+  end
+
   private
   def redirectMessageToPlugin(event_buffer)
 	if @out == "stdout"
-		@output_plugin.multi_receive_encoded([[message, message]])
-		puts ""
+		event_buffer.each do |event|
+			@output_plugin.multi_receive_encoded(encodeEvent(event))
+			puts ""
+		end
 	elsif @out == "elasticsearch"
 		@output_plugin.multi_receive(event_buffer)
 	else
@@ -78,9 +85,7 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 				index += 1
 			end
 			@events.slice!(0, index)
-			Thread.new {
-				redirectMessageToPlugin(event_buffer)
-			}
+			redirectMessageToPlugin(event_buffer)
 		end
 	end
   end # def register
