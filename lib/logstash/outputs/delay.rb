@@ -20,8 +20,24 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 
     @events
     @times
-    @debug
     @output_plugin
+
+    private
+    def binarySearch(array, element)
+        lower_bound = 0
+        upper_bound = array.length - 1
+
+        while lower_bound <= upper_bound
+            middle_bound = lower_bound + ((upper_bound - lower_bound) / 2)
+            if array[middle_bound] < element
+                lower_bound = middle_bound + 1
+            else
+                upper_bound = middle_bound - 1
+            end
+        end
+
+        return lower_bound
+    end
 
     private
     def createElasticsearchConfig
@@ -80,7 +96,6 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
     def register
         @events = []
         @times = []
-        @debug = File.open("logstash-output-delay.debug", 'w')
         @output_plugin = nil
 
         chooseOutputPlugin
@@ -94,13 +109,9 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
         scheduler.every scheduler_delay do
             if @times.length != 0
                 now = Time.new
-                index = 0
-                @times.detect {|time|
-                    index += 1
-                    time > now
-                }
-                redirectMessageToPlugin(@events.slice!(0, index))
-                @times.slice!(0, index)
+                index = binarySearch(@times, now)
+                redirectMessageToPlugin(@events.shift(index))
+                @times.shift(index)
             end
         end
     end # def register
