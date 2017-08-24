@@ -11,6 +11,7 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
     concurrency :single
 
     config :delay, :validate => :number, :default => 5, :required => false
+    config :batch_size, :validate => :number, :default => 10000, :required => false
     config :out, :validate => :string, :default => "stdout", :required => false
     config :hosts, :validate => :uri, :default => "//127.0.0.1", :required => false
     config :index, :validate => :string, :default => "logstash", :required => false
@@ -53,7 +54,7 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 
     private
     def encodeEvent(event)
-        [[event, event]]
+        return [[event, event]]
     end
 
     private
@@ -65,14 +66,14 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
             end
         elsif @out == "elasticsearch"
             index = 0
-            batch_size = 10000
-            while index < event_buffer.length do
-                if index + batch_size >= event_buffer.length
-                    @output_plugin.multi_receive(event_buffer[index..event_buffer.length])
+            event_buffer_length = event_buffer.length
+            while index < event_buffer_length do
+                if index + @batch_size >= event_buffer_length
+                    @output_plugin.multi_receive(event_buffer[index..event_buffer_length])
                 else
-                    @output_plugin.multi_receive(event_buffer[index, batch_size])
+                    @output_plugin.multi_receive(event_buffer[index, @batch_size])
                 end
-                index += batch_size
+                index += @batch_size
             end
         else
             puts = "Choose between stdout or elasticsearch"
@@ -118,10 +119,8 @@ class LogStash::Outputs::Delay < LogStash::Outputs::Base
 
     public
     def receive(event)
-        time = Time.new + @delay
-
         @events << event
-        @times << time
+        @times << Time.new + @delay
 
         return "Event received"
     end # def event
