@@ -2,8 +2,8 @@ Gem::Specification.new do |s|
   s.name          = 'logstash-output-delay'
   s.version       = '0.1.0'
   s.licenses      = ['Apache-2.0']
-  s.summary       = 'Write a short summary, because Rubygems requires one.'
-  s.description   = 'Write a longer description or delete this line.'
+  s.summary       = 'Apply a delay on each event and send them either in Elasticsearch, either on stdout.'
+  s.description   = 'For each event passing through the plugin, a delay is apply on them. Once this delay is over, the event is send to Elasticsearch or to stdout using the plugin logstash-output-elasticsearch and logstash-output-stdout.'
   s.homepage      = 'https://github.com/TristanRsl-dev/logstash-output-delay'
   s.authors       = ['Tristan Roussel']
   s.email         = 'tristan.roussel@epita.fr'
